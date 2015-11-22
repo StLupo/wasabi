@@ -12,26 +12,25 @@ import shutil
 from PyQt4 import QtCore, QtGui
 
 import kaja_clock
+import set_alarm_dialog
 import yr_info 
 #from sip import enableautoconversion
 
-PHOTO_DIR_1 = "/home/pi/git/wasabi/photos/ski"
-PHOTO_DIR_2 = "/home/pi/git/wasabi/photos/cats"
-WEATHER_URL = "http://www.yr.no/place/Norway/Buskerud/Kongsberg/Kongsberg/"
-ALARM_LIGHT_ON = "/home/pi/git/wasabi/cache/alarm_on.png"
-ALARM_LIGHT_OFF = "/home/pi/git/wasabi/cache/alarm_off.png"
-ALARM_DELAYED = "/home/pi/git/wasabi/cache/alarm_blue.png"
-BACKGROUND_IMAGE = "/home/pi/git/wasabi/backgrounds/night/night3.png"
-DAY_BACKGROUND_FOLDER = "/home/pi/git/wasabi/backgrounds/pink"
-NIGHT_BACKGROUND_FOLDER = "/home/pi/git/wasabi/backgrounds/night"
-DARK_HOUR_START = 20
-DARK_HOUR_END = 7
-ALARM_SOUND = "/home/pi/git/wasabi/audio/01_diho.mp3"
-ALARM_FILE = "/tmp/walarm"
+from config import *
 
-PHOTO_PERIOD_1 = 60
-PHOTO_PERIOD_2 = 60
-WEATHER_QUERY_PERIOD = 15*60
+
+
+
+
+class AlarmDialog(QtGui.QDialog):
+    def __init__(self):
+        QtGui.QDialog.__init__(self)
+
+        # Set up the user interface from Designer.
+        self.ui = set_alarm_dialog.Ui_Dialog()
+        self.ui.setupUi(self)
+
+
 
 class MyMainWindow(QtGui.QMainWindow):
  
@@ -101,7 +100,7 @@ class MyMainWindow(QtGui.QMainWindow):
         
         ywf = yr_info.YrWeatherFetcher()
         ywf.open(WEATHER_URL)
-        ret = ywf.get_result()
+        ret = ywf.get_result(CACHE_DIR)
         
         for i, info in enumerate(ret):
             time_label = [self._ui.yr_time_1, self._ui.yr_time_2, self._ui.yr_time_3, self._ui.yr_time_4][i]
@@ -184,10 +183,30 @@ class MyMainWindow(QtGui.QMainWindow):
             self._enable_audio_jack(False)
         else:
             print "Busy"
+
+    def _show_alarm_dlg(self):
+
+        self._dialog  = AlarmDialog()
+        self._dialog.show()
+        # self._dialog = QtGui.QDialog()
+        # self._dialog.accept = self.accept_alarm
+        # self._dialog.reject = self.reject_alarm
+        # self._dialog.ui = set_alarm_dialog.Ui_Dialog()
+        # self._dialog.ui.setupUi(self._dialog)
+        # self._dialog.show()
+
+    def accept_alarm(self):
+        print "Accept"
+        self._dialog.close()
+
+    def reject_alarm(self):
+        print "Reject"
+        self._dialog.close()
             
     def mousePressEvent(self, QMouseEvent):
         
         pygame.mixer.music.stop()
+        self._show_alarm_dlg()
     
     def _hide_pointer(self):
         

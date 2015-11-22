@@ -5,7 +5,6 @@ from htmlentitydefs import name2codepoint
 import urllib2
 #from aifc import data
 
-PIX_CACHE = "/home/pi/git/wasabi/cache"
 
 class YrParser(HTMLParser):
     
@@ -104,12 +103,12 @@ class YrWeatherFetcher(object):
         opener = urllib2.urlopen(url)
         self._parser.feed(opener.read())
         
-    def get_result(self):
+    def get_result(self, cache_dir):
         
         result = self._parser.get_weather_info()
         for i in range(len(result)):
             opener = urllib2.urlopen(result[i][2])
-            target_path = os.path.join(PIX_CACHE, os.path.basename(result[i][2]))
+            target_path = os.path.join(cache_dir, os.path.basename(result[i][2]))
             with open(target_path, "w") as _f:
                 _f.write(opener.read())
             result[i][2] = target_path
