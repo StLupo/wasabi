@@ -20,16 +20,129 @@ from config import *
 
 
 
+def _read_alarm():
+
+    ret_hour = 0
+    ret_minute = 0
+    ret_days = []
+    ret_active = False
+
+    _f = os.popen("crontab -l")
+    lines = _f.readlines()
+    for line in lines:
+        if line.count(ALARM_FILE):
+            if line[0] != "#":
+                ret_active = True
+            elements = line.split()
+            ret_minute = int(elements [0])
+            ret_hour = int(elements[1])
+            days = elements[4]
+            if days.count("-"):
+                ret_day = 8
+                start_day, end_day = days.split("-")
+                ret_days = range(int(start_day), int(end_day) + 1)
+            else:
+                ret_days = [int(el) for el in days.split(",")]
+    return ret_days, ret_hour, ret_minute, ret_active
 
 
 class AlarmDialog(QtGui.QDialog):
     def __init__(self):
+
+        self._alarm_state = None
         QtGui.QDialog.__init__(self)
 
         # Set up the user interface from Designer.
         self.ui = set_alarm_dialog.Ui_Dialog()
         self.ui.setupUi(self)
+        alarm_days, alarm_hour, alarm_minute, alarm_state = _read_alarm()
+        self.ui.radio_sun.setChecked(False)
+        self.ui.radio_man.setChecked(False)
+        self.ui.radio_tue.setChecked(False)
+        self.ui.radio_wed.setChecked(False)
+        self.ui.radio_thu.setChecked(False)
+        self.ui.radio_fri.setChecked(False)
+        self.ui.radio_sat.setChecked(False)
+        for day in alarm_days:
+            if day == 0:
+                self.ui.radio_sun.setChecked(True)
+            elif day == 1:
+                self.ui.radio_man.setChecked(True)
+            elif day == 2:
+                self.ui.radio_tue.setChecked(True)
+            elif day == 3:
+                self.ui.radio_wed.setChecked(True)
+            elif day == 4:
+                self.ui.radio_thu.setChecked(True)
+            elif day == 5:
+                self.ui.radio_fri.setChecked(True)
+            elif day == 6:
+                self.ui.radio_sat.setChecked(True)
+        self.ui.timeEdit.setTime(QtCore.QTime(alarm_hour, alarm_minute))
+        if alarm_state == True:
+            self.ui.pushButton.setIcon(QtGui.QIcon(QtGui.QPixmap(ALARM_DIALOG_ON)))
+            self._alarm_state = True
+        else:
+            self.ui.pushButton.setIcon(QtGui.QIcon(QtGui.QPixmap(ALARM_DIALOG_OFF)))
+            self._alarm_state = False
 
+        self.connect(self.ui.pushButton, QtCore.SIGNAL('clicked()'), self._toggle_alarm)
+
+    def reject(self):
+        
+        QtGui.QDialog.reject(self)
+        
+    def accept(self):
+        try:
+            hour, minute, days, on = self._get_result()
+
+            with open(os.path.join(CACHE_DIR, "addcron.txt"), "w") as _f:
+                _f.write("%s%i %i * * %s touch %s%s" % ("" if on else "#", minute, hour, ",".join([str(el) for el in days]), ALARM_FILE, os.linesep))
+            os.system("crontab %s" % (os.path.join(CACHE_DIR, "addcron.txt")))
+        except:
+            with open("fail.txt", "w") as _f:
+                import traceback
+                traceback.print_exc(file = _f)
+
+
+        QtGui.QDialog.accept(self)
+        
+    def _toggle_alarm(self):
+
+        self._alarm_state = not self._alarm_state
+        if self._alarm_state == True:
+            self.ui.pushButton.setIcon(QtGui.QIcon(QtGui.QPixmap(ALARM_DIALOG_ON)))
+        else:
+            self.ui.pushButton.setIcon(QtGui.QIcon(QtGui.QPixmap(ALARM_DIALOG_OFF)))
+
+
+    def _get_result(self):
+
+        ret_hour = 0
+        ret_minute = 0
+        ret_days = [0]
+        ret_on = False
+
+        alarm_time = self.ui.timeEdit.time()
+        ret_hour = alarm_time.hour()
+        ret_minute = alarm_time.minute()
+        if self.ui.radio_sun.checkState():
+            ret_days.append(0)
+        if self.ui.radio_man.checkState():
+            ret_days.append(1)
+        if self.ui.radio_tue.checkState():
+            ret_days.append(2)
+        if self.ui.radio_wed.checkState():
+            ret_days.append(3)
+        if self.ui.radio_thu.checkState():
+            ret_days.append(4)
+        if self.ui.radio_fri.checkState():
+            ret_days.append(5)
+        if self.ui.radio_sat.checkState():
+            ret_days.append(6)
+
+        ret_on = self._alarm_state
+        return ret_hour, ret_minute, ret_days, ret_on
 
 
 class MyMainWindow(QtGui.QMainWindow):
@@ -177,7 +290,7 @@ class MyMainWindow(QtGui.QMainWindow):
         os.system(cmd)
         
     def _check_playback(self):
-        
+
         if not pygame.mixer.music.get_busy():
             print "Not Busy"
             self._enable_audio_jack(False)
@@ -188,29 +301,17 @@ class MyMainWindow(QtGui.QMainWindow):
 
         self._dialog  = AlarmDialog()
         self._dialog.show()
-        # self._dialog = QtGui.QDialog()
-        # self._dialog.accept = self.accept_alarm
-        # self._dialog.reject = self.reject_alarm
-        # self._dialog.ui = set_alarm_dialog.Ui_Dialog()
-        # self._dialog.ui.setupUi(self._dialog)
-        # self._dialog.show()
 
-    def accept_alarm(self):
-        print "Accept"
-        self._dialog.close()
-
-    def reject_alarm(self):
-        print "Reject"
-        self._dialog.close()
-            
     def mousePressEvent(self, QMouseEvent):
         
-        pygame.mixer.music.stop()
-        self._show_alarm_dlg()
+        if not pygame.mixer.music.get_busy():
+            self._show_alarm_dlg()
+        else:
+            pygame.mixer.music.stop()
+            
     
     def _hide_pointer(self):
         
-        #QtGui.QCursor.setPos(QtCore.QPoint(800, 480))
         self.setCursor(QtCore.Qt.BlankCursor)
             
     def time(self):
