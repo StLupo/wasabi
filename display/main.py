@@ -300,6 +300,7 @@ class MyMainWindow(QtGui.QMainWindow):
     def _show_alarm_dlg(self):
 
         self._dialog  = AlarmDialog()
+        self._dialog.setStyleSheet("background-color:#ff4081;")
         self._dialog.show()
 
     def mousePressEvent(self, QMouseEvent):
